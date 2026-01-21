@@ -292,6 +292,14 @@
     </div>
 
     <script>
+        // This prevents the browser from scrolling when you use the arrow keys
+        window.addEventListener("keydown", function(e) {
+            if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
+                e.preventDefault();
+            }
+        }, false);
+
+        
         // --- GAME CONSTANTS AND SETUP ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
