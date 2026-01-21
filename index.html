@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Snake Game (16:9)</title>
+    
+    <style>
+        /* --- OFFLINE FONT INCLUSION --- */
+        @font-face {
+            font-family: 'Press Start 2P';
+            /* Reference the local file in the same directory */
+            src: url('PressStart2P.ttf') format('truetype'); 
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        /* Custom styles for the game board and UI - ALL STYLES EMBEDDED */
+        
+        /* Apply font: Now using the local font first, falling back to monospace */
+        body {
+            font-family: 'Press Start 2P', monospace; 
+            background-color: #1f2937; /* Darker blue-gray background for TV */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Game container styling - adjusted for wide screen */
+        .game-container {
+            background-color: #111827; /* Even darker background for contrast */
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.6), 0 8px 15px -4px rgba(0, 0, 0, 0.5);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            /* Max width set for 1280px wide canvas + padding */
+            max-width: 1320px; 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        /* Styling for the main title */
+        .title-text {
+            font-size: 2.25rem; /* Replaces text-4xl */
+            color: #fcd34d; /* Replaces text-yellow-300 */
+            margin-bottom: 1.5rem; /* Replaces mb-6 */
+            text-align: center; /* Replaces text-center */
+        }
+        
+        /* Wrapper for the canvas and the overlay */
+        .canvas-wrapper {
+            position: relative;
+            width: 100%; /* Replaces w-full */
+            max-width: 1280px; /* Replaces max-w-[1280px] */
+            /* Using a common 16:9 aspect ratio definition */
+            height: 0;
+            padding-top: 56.25%; /* 720/1280 * 100% = 56.25% (16:9 aspect ratio) */
+            overflow: hidden;
+            border-radius: 0.75rem;
+        }
+
+        /* Canvas styling - this is the actual game board (1280x720) */
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%; /* Fill the wrapper */
+            height: 100%; /* Fill the wrapper */
+            border: 6px solid #f97316; /* Orange border for high visibility on TV */
+            background-color: #000; /* Black game background */
+            box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.1);
+            /* Note: The canvas element's width/height attributes still define the internal drawing resolution */
+        }
+
+        /* Score and Control panel */
+        .status-panel {
+            color: #fff;
+            margin-top: 1.5rem;
+            /* Max-width matches canvas width */
+            width: 100%;
+            max-width: 1280px; 
+            display: flex;
+            justify-content: space-between; /* Adjusted to space out elements after removing Exit button */
+            align-items: center;
+            flex-wrap: wrap; 
+        }
+
+        /* UPDATED: Level and Score in one box */
+        .score-display {
+            padding: 0.75rem 1.5rem;
+            background-color: #374151;
+            border-radius: 0.5rem;
+            margin: 0.5rem 0;
+            font-size: 1rem;
+        }
+
+        .info-display {
+            padding: 0.75rem 1.5rem;
+            background-color: #374151;
+            border-radius: 0.5rem;
+            margin: 0.5rem 0;
+            font-size: 1rem;
+            /* Flex-grow allows it to take up the space where the exit button used to be */
+            flex-grow: 1; 
+            text-align: center;
+        }
+        
+        /* Updated line for pause instructions */
+        .info-display:after {
+            /* ADDED Media Key and ESCAPE key instructions */
+            content: " | Enter / P / Space / Media Key to Pause | ESC to Exit (Back)"; /* Updated text */
+            color: #a7f3d0; /* Light green for new instructions */
+        }
+
+
+        /* The previous #exitButton styling has been removed here */
+
+
+        /* Explicitly define the hidden class for robust visibility control */
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- Overlay Styles (Game Over & Exit Confirmation) --- */
+        #gameOverOverlay, #exitConfirmationModal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        /* Styling for the central confirmation box */
+        .exit-modal-box {
+            background-color: #1f2937; /* Dark gray background */
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 4px solid #f97316; /* Orange border */
+            text-align: center;
+            box-shadow: 0 0 20px rgba(249, 115, 22, 0.5); /* Glowing effect */
+            max-width: 80%;
+        }
+
+        .modal-text {
+            color: #fff;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .modal-button-group {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+        }
+        
+        .modal-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            border: none;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s, box-shadow 0.1s;
+            /* Make buttons focusable for keyboard navigation */
+            outline: none; 
+        }
+
+        /* Highlighting for the focused button (crucial for TV navigation) */
+        .modal-button.focused, .modal-button:focus {
+            outline: 6px solid #fcd34d; /* Bright yellow/gold outline */
+            box-shadow: 0 0 15px #fcd34d; /* Glowing effect */
+            transform: scale(1.05); /* Slight enlargement */
+            transition: all 0.2s ease-in-out;
+        }
+
+        .modal-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Specific button colors */
+        #cancelExitButton {
+            background-color: #34d399; /* Green/Resume color */
+            color: #111827;
+            box-shadow: 0 4px 0 #059669;
+        }
+        
+        #yesExitButton {
+            background-color: #ef4444; /* Red/Exit color */
+            color: #fff;
+            box-shadow: 0 4px 0 #b91c1c;
+        }
+        /* --- End Overlay Styles --- */
+
+
+        /* Game Over Overlay (Existing Styles) */
+        #gameOverOverlay {
+            /* ... existing styles ... */
+        }
+        .game-over-text {
+            color: #ef4444; /* Red error color */
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 15px #f87171;
+            text-align: center;
+        }
+
+        .final-score {
+            color: #fff;
+            font-size: 2rem;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .restart-button {
+            padding: 1rem 2rem;
+            background-color: #f97316; /* Bright orange */
+            color: #111827;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 6px 0 #9a3412; /* 3D effect */
+            border: none;
+            font-size: 1.25rem;
+            text-transform: uppercase;
+            /* Make sure the restart button is also focusable */
+            outline: none; 
+        }
+        
+        /* Focus style for the main restart button */
+        .restart-button:focus {
+            outline: 6px solid #fcd34d; /* Bright yellow/gold outline */
+            box-shadow: 0 0 15px #fcd34d, 0 6px 0 #9a3412;
+        }
+
+        .restart-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 #9a3412;
+            background-color: #fb923c;
+        }
+
+        .restart-button:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #9a3412;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="title-text">TV Snake (16:9)</h1>
+        
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" width="1280" height="720"></canvas>
+            
+            <!-- Existing Game Over Overlay -->
+            <div id="gameOverOverlay" class="hidden absolute" style="width:100%; height:100%;">
+                <p id="gameOverTitle" class="game-over-text">GAME OVER</p>
+                <p id="finalScore" class="final-score"></p>
+                <button id="restartButton" class="restart-button">▶️ START / 🔄 RESTART (ENTER)</button>
+            </div>
+            
+            <!-- Exit Confirmation Modal (Triggered by ESC key / Remote Back) -->
+            <div id="exitConfirmationModal" class="hidden absolute" style="width:100%; height:100%;">
+                <div class="exit-modal-box">
+                    <p class="modal-text">Are you sure you want to end the current game?</p>
+                    <div class="modal-button-group">
+                        <button id="cancelExitButton" class="modal-button">Cancel</button>
+                        <button id="yesExitButton" class="modal-button">Yes, Exit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Score and Instructions -->
+        <div class="status-panel">
+            <div class="score-display">LEVEL: <span id="level">1</span> | SCORE: <span id="score">0</span></div>
+            <!-- info-display now takes up the remaining space -->
+            <div class="info-display">Use TV Remote Arrow Keys to move!</div>
+            <!-- The physical Exit Button has been removed from here -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- GAME CONSTANTS AND SETUP ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level'); 
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const gameOverTitle = document.getElementById('gameOverTitle');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const restartButton = document.getElementById('restartButton');
+        
+        // Removed: const exitButton = document.getElementById('exitButton');
+        const exitConfirmationModal = document.getElementById('exitConfirmationModal');
+        const cancelExitButton = document.getElementById('cancelExitButton');
+        const yesExitButton = document.getElementById('yesExitButton');
+
+
+        // Game resolution and grid (1280 wide, 720 high - 16:9)
+        const CANVAS_WIDTH = 1280;
+        const CANVAS_HEIGHT = 720;
+        const TILE_SIZE = 40;
+        const MINI_TILE_SIZE = 20; 
+        const GRID_WIDTH = CANVAS_WIDTH / TILE_SIZE;
+        const GRID_HEIGHT = CANVAS_HEIGHT / TILE_SIZE;
+
+        // Game state variables
+        let snake = [];
+        let food = {};
+        let dx = TILE_SIZE; // Initial movement: 40px right
+        let dy = 0;         
+        let score = 0;
+        let currentLevel = 1;
+        let isGameOver = true;
+        let isPaused = false;
+        let directionQueue = []; 
+        let focusedButtonIndex = 0; // 0: Cancel, 1: Yes, Exit (for modal navigation)
+
+        const INITIAL_GAME_SPEED = 150;
+        const MIN_GAME_SPEED = 50; 
+        const LEVEL_THRESHOLD_SCORE = 50;
+        const SPEED_DECREMENT_PER_LEVEL = 10;
+        
+        let gameSpeed = INITIAL_GAME_SPEED; 
+        let lastUpdateTime = 0;
+        let animationFrameId;
+
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        // --- PAUSE/PLAY SPRITE DEFINITIONS (15x15 Grid / 300px wide) ---
+        const PLAY_PAUSE_SPRITE = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 
+            [0,1,0,0,0,0,0,0,0,0,1,1,0,1,1], 
+            [0,1,1,0,0,0,0,0,0,0,1,1,0,1,1], 
+            [0,1,1,1,0,0,0,0,0,0,1,1,0,1,1], 
+            [0,1,1,1,1,0,0,0,0,0,1,1,0,1,1], 
+            [0,1,1,1,1,1,0,0,0,0,1,1,0,1,1], 
+            [0,1,1,1,1,1,1,0,0,0,1,1,0,1,1], 
+            [0,1,1,1,1,1,1,1,0,0,1,1,0,1,1], 
+            [0,1,1,1,1,1,1,0,0,0,1,1,0,1,1], 
+            [0,1,1,1,1,1,0,0,0,0,1,1,0,1,1], 
+            [0,1,1,1,1,0,0,0,0,0,1,1,0,1,1], 
+            [0,1,1,1,0,0,0,0,0,0,1,1,0,1,1], 
+            [0,1,1,0,0,0,0,0,0,0,1,1,0,1,1], 
+            [0,1,0,0,0,0,0,0,0,0,1,1,0,1,1], 
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        ];
+        const ICON_GRID_SIZE = 15; 
+        const ICON_PIXEL_SIZE = ICON_GRID_SIZE * MINI_TILE_SIZE;
+
+
+        // --- GAME UTILITIES ---
+
+        /**
+         * Generates a random position on the grid that is not occupied by the snake.
+         */
+        function getRandomPosition() {
+            let newPos;
+            let occupied;
+            do {
+                newPos = {
+                    x: Math.floor(Math.random() * GRID_WIDTH),
+                    y: Math.floor(Math.random() * GRID_HEIGHT) 
+                };
+                
+                occupied = snake.some(segment => segment.x === newPos.x * TILE_SIZE && segment.y === newPos.y * TILE_SIZE);
+            } while (occupied);
+            
+            return { x: newPos.x * TILE_SIZE, y: newPos.y * TILE_SIZE };
+        }
+
+        /**
+         * Initializes or resets the game state.
+         */
+        function initGame() {
+            // Hide all overlays when starting the game
+            exitConfirmationModal.classList.add('hidden'); 
+            gameOverOverlay.classList.add('hidden');
+            
+            // Set focus to the main game canvas for directional input
+            canvas.focus(); 
+
+            const startY = Math.floor(GRID_HEIGHT / 2) * TILE_SIZE; 
+
+            snake = [
+                { x: 5 * TILE_SIZE, y: startY },
+                { x: 4 * TILE_SIZE, y: startY },
+                { x: 3 * TILE_SIZE, y: startY }
+            ];
+            dx = TILE_SIZE;
+            dy = 0;
+            score = 0;
+            currentLevel = 1;
+            isGameOver = false;
+            isPaused = false;
+            gameSpeed = INITIAL_GAME_SPEED;
+            lastUpdateTime = 0;
+            directionQueue = [];
+            
+            scoreDisplay.textContent = score;
+            levelDisplay.textContent = currentLevel;
+
+            food = getRandomPosition();
+
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+
+            gameLoop(0);
+        }
+
+        // --- DRAWING FUNCTIONS ---
+
+        /**
+         * Clears the canvas.
+         */
+        function clearCanvas() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        }
+
+        /**
+         * Draws a single tile.
+         */
+        function drawTile(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+        }
+
+        /**
+         * Draws the snake on the canvas.
+         */
+        function drawSnake() {
+            snake.forEach((segment, index) => {
+                const color = index === 0 ? '#10b981' : '#34d399';
+                drawTile(segment.x, segment.y, color);
+            });
+        }
+
+        /**
+         * Draws the food on the canvas.
+         */
+        function drawFood() {
+            drawTile(food.x, food.y, '#f59e0b');
+        }
+        
+        /**
+         * Draws a custom pixel-art icon.
+         */
+        function drawBlockyIcon(centerX, centerY, sprite, color) {
+            ctx.fillStyle = color;
+            const size = ICON_GRID_SIZE; 
+            const startX = centerX - (ICON_PIXEL_SIZE / 2);
+            const startY = centerY - (ICON_PIXEL_SIZE / 2);
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    if (sprite[y] && sprite[y][x] === 1) { 
+                        const px = startX + x * MINI_TILE_SIZE;
+                        const py = startY + y * MINI_TILE_SIZE;
+                        ctx.fillRect(px + 1, py + 1, MINI_TILE_SIZE - 2, MINI_TILE_SIZE - 2); 
+                    }
+                }
+            }
+        }
+
+
+        /**
+         * Draws the Pause screen overlay with the Play/Pause symbol.
+         */
+        function drawPauseSymbol() {
+            // 1. Draw a semi-transparent dark overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); 
+
+            // 2. Draw the PAUSED text above the icon
+            ctx.font = `2rem 'Press Start 2P', monospace`; 
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fcd34d';
+            ctx.fillText("PAUSED", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 120);
+
+            // 3. Draw the custom blocky Play/Pause icon in the center
+            const ICON_COLOR = '#fff';
+            
+            drawBlockyIcon(
+                CANVAS_WIDTH / 2, 
+                CANVAS_HEIGHT / 2 + 30, 
+                PLAY_PAUSE_SPRITE, 
+                ICON_COLOR
+            );
+        }
+
+
+        /**
+         * Main draw function, called every frame.
+         */
+        function draw() {
+            clearCanvas();
+            drawFood();
+            drawSnake();
+        }
+
+        // --- GAME LOGIC ---
+
+        /**
+         * Checks for self-collision (snake head hitting its body).
+         */
+        function checkSelfCollision(headX, headY) {
+            for (let i = 1; i < snake.length; i++) {
+                if (snake[i].x === headX && snake[i].y === headY) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Sets the game over state and displays the overlay.
+         */
+        function setGameOver(titleText) {
+            isGameOver = true;
+            isPaused = false;
+            
+            // Ensure exit modal is hidden when going to Game Over/Welcome screen
+            exitConfirmationModal.classList.add('hidden');
+
+            gameOverTitle.textContent = titleText;
+            
+            gameOverTitle.style.color = (titleText === 'WELCOME' ? '#a7f3d0' : '#ef4444');
+            gameOverTitle.style.textShadow = (titleText === 'WELCOME' ? '0 0 15px #6ee7b7' : '0 0 15px #f87171');
+
+            if (titleText === 'WELCOME') {
+                finalScoreDisplay.textContent = 'Press the button (▶️) or ENTER / ESC to start!';
+            } else {
+                finalScoreDisplay.textContent = `Final Score: ${score}`;
+            }
+
+            gameOverOverlay.classList.remove('hidden');
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            
+            // Set focus to the restart button when the game ends/starts
+            restartButton.focus(); 
+            
+            console.log(`${titleText}. Final Score: ${score}`);
+        }
+        
+        /**
+         * Helper function to manage focus on the modal buttons.
+         */
+        function updateModalFocus(index) {
+            focusedButtonIndex = index;
+            cancelExitButton.classList.remove('focused');
+            yesExitButton.classList.remove('focused');
+            
+            if (index === 0) {
+                cancelExitButton.classList.add('focused');
+                cancelExitButton.focus(); 
+            } else {
+                yesExitButton.classList.add('focused');
+                yesExitButton.focus();
+            }
+        }
+
+        /**
+         * Displays the confirmation modal and pauses the game.
+         */
+        function showExitConfirmation() {
+            // Only show if the game is currently running
+            if (!isGameOver) {
+                isPaused = true;
+                exitConfirmationModal.classList.remove('hidden');
+                
+                // Set initial focus on the Cancel button
+                updateModalFocus(0); 
+            }
+        }
+
+        /**
+         * Hides the confirmation modal and resumes the game.
+         */
+        function hideExitConfirmation() {
+            exitConfirmationModal.classList.add('hidden');
+            // Resume play if the user cancels the exit
+            isPaused = false; 
+            // Return focus to the canvas to listen for movement keys
+            canvas.focus();
+        }
+
+        /**
+         * Updates the snake's position and checks for collisions.
+         */
+        function updateGame() {
+            // Check for game state or if modal is visible
+            if (isGameOver || isPaused || !exitConfirmationModal.classList.contains('hidden')) return;
+
+            // --- PROCESS INPUT QUEUE ---
+            if (directionQueue.length > 0) {
+                const nextDirection = directionQueue.shift();
+                dx = nextDirection.dx;
+                dy = nextDirection.dy;
+            }
+
+            // 1. Create the new snake head position
+            let head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+            // 2. Implement Wall Wrapping (No Wall Crash)
+            if (head.x < 0) head.x = CANVAS_WIDTH - TILE_SIZE;
+            else if (head.x >= CANVAS_WIDTH) head.x = 0;
+            if (head.y < 0) head.y = CANVAS_HEIGHT - TILE_SIZE;
+            else if (head.y >= CANVAS_HEIGHT) head.y = 0;
+
+            // 3. Check for self-collision
+            const hitSelf = checkSelfCollision(head.x, head.y);
+
+            if (hitSelf) {
+                setGameOver('GAME OVER');
+                return;
+            }
+
+            // Add the new head
+            snake.unshift(head);
+
+            // 4. Check for food collision
+            const didEatFood = head.x === food.x && head.y === food.y; 
+
+            if (didEatFood) {
+                score += 10;
+                scoreDisplay.textContent = score;
+
+                // Handle Level Up and Speed Change
+                if (score >= currentLevel * LEVEL_THRESHOLD_SCORE) {
+                    currentLevel++;
+                    levelDisplay.textContent = currentLevel;
+                    
+                    const newSpeed = INITIAL_GAME_SPEED - (currentLevel - 1) * SPEED_DECREMENT_PER_LEVEL;
+                    gameSpeed = Math.max(MIN_GAME_SPEED, newSpeed);
+                    console.log(`Level Up! New Speed: ${gameSpeed}ms`);
+                }
+
+                // Generate new food
+                food = getRandomPosition();
+            } else {
+                // Remove the tail (snake moves)
+                snake.pop();
+            }
+        }
+
+
+        /**
+         * The main game loop using requestAnimationFrame.
+         */
+        function gameLoop(currentTime) {
+            animationFrameId = requestAnimationFrame(gameLoop);
+
+            // If paused, just draw the pause screen or the exit modal background, and skip update logic
+            // Note: When the exit modal is visible, isPaused is true, and the game is paused.
+            if (isPaused) {
+                // Only draw the pause symbol if the exit modal is NOT visible (standard pause)
+                if (exitConfirmationModal.classList.contains('hidden')) {
+                    drawPauseSymbol();
+                }
+                return; 
+            }
+
+            const deltaTime = currentTime - lastUpdateTime;
+
+            if (deltaTime > gameSpeed) {
+                lastUpdateTime = currentTime;
+                
+                updateGame();
+                draw();
+
+                if (isGameOver) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+            }
+        }
+        
+        // --- INPUT HANDLING ---
+
+        /**
+         * Returns the *current* or *queued* direction.
+         */
+        function getCurrentDirection() {
+            if (directionQueue.length > 0) {
+                return directionQueue[directionQueue.length - 1];
+            } else {
+                return { dx: dx, dy: dy };
+            }
+        }
+
+
+        /**
+         * Adds a new direction to the queue if it's not a U-turn and the queue isn't full.
+         */
+        function handleKeydown(event) {
+            const keyPressed = event.key;
+            const keyCode = event.keyCode; 
+            
+            // Check if the exit confirmation modal is currently displayed
+            const isExitModalVisible = !exitConfirmationModal.classList.contains('hidden');
+
+            // --- 1. Handle Input for Overlays (Game Over or Exit Modal) ---
+
+            // If Game Over, only allow Enter/Escape to restart/start.
+            if (isGameOver) {
+                // Focus is already on restartButton, so Enter/Space/Escape all restart/start
+                if (keyPressed === 'Enter' || keyPressed === 'Escape' || keyPressed === ' ') initGame();
+                return;
+            }
+            
+            // If Exit Modal is visible, handle its buttons
+            if (isExitModalVisible) {
+                event.preventDefault(); // Stop default browser actions like scrolling
+                
+                if (keyPressed === 'Escape') {
+                    // Escape/Back button always cancels
+                    hideExitConfirmation();
+                } else if (keyPressed === 'ArrowLeft') {
+                    // Left arrow moves focus to Cancel (index 0)
+                    updateModalFocus(0);
+                } else if (keyPressed === 'ArrowRight') {
+                    // Right arrow moves focus to Yes, Exit (index 1)
+                    updateModalFocus(1);
+                } else if (keyPressed === 'Enter' || keyPressed === ' ') {
+                    // Enter/Space activates the focused button
+                    if (focusedButtonIndex === 0) {
+                        cancelExitButton.click();
+                    } else {
+                        yesExitButton.click();
+                    }
+                }
+                return; // Consume input so it doesn't affect game/pause
+            }
+
+            // --- 2. Handle Pause/Unpause (Game is Running) ---
+            
+            // Use P, Space, Enter, or MediaPlayPause (179) to toggle pause
+            if (keyPressed === 'p' || keyPressed === 'P' || keyPressed === ' ' || keyPressed === 'Enter' || keyPressed === 'MediaPlayPause' || keyCode === 179) {
+                isPaused = !isPaused;
+                return;
+            }
+
+            // --- 3. Handle Exit (Game is Running) ---
+            // Use Escape key for TV Back button/Exit action
+            if (keyPressed === 'Escape') {
+                showExitConfirmation();
+                return;
+            }
+
+
+            // --- 4. Directional control is only allowed when not paused ---
+            if (isPaused) return;
+
+            const currentDir = getCurrentDirection();
+            let newDx = 0;
+            let newDy = 0;
+
+            const MAX_QUEUE_SIZE = 2;
+            if (directionQueue.length >= MAX_QUEUE_SIZE) {
+                return; 
+            }
+
+            switch (keyPressed) {
+                case 'ArrowLeft':
+                case 'a':
+                    newDx = -TILE_SIZE; newDy = 0;
+                    break;
+                case 'ArrowUp':
+                case 'w':
+                    newDx = 0; newDy = -TILE_SIZE;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    newDx = TILE_SIZE; newDy = 0;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    newDx = 0; newDy = TILE_SIZE;
+                    break;
+                default:
+                    return;
+            }
+            
+            const isUTurn = (currentDir.dx === -newDx && currentDir.dy === -newDy);
+
+            if (!isUTurn) {
+                directionQueue.push({ dx: newDx, dy: newDy });
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        document.addEventListener('keydown', handleKeydown);
+        restartButton.addEventListener('click', initGame);
+        
+        cancelExitButton.addEventListener('click', hideExitConfirmation);
+        yesExitButton.addEventListener('click', () => setGameOver('WELCOME')); 
+
+
+        // --- INITIAL START MESSAGE ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Give the canvas a tabindex so it can receive focus
+            canvas.setAttribute('tabindex', '0');
+            clearCanvas();
+            setGameOver('WELCOME'); 
+        });
+        
+    </script>
+</body>
+</html>
