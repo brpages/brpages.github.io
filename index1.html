@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>16-BIT GAME ZONE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #e94560;
+            --secondary-color: #0f3460;
+            --text-color: #ffffff;
+            --highlight-color: #00ff7f; /* Bright green for clear selection */
+            
+            /* Game Block Colors */
+            --block-pink: #ff007f;
+            --block-cyan: #00bfff;
+            --block-green: #00ff7f;
+            --block-orange: #ff8c00;
+        }
+
+        /* Hiding the cursor for the PS4 "Console" feel */
+        html, body, a, button {
+            cursor: none !important;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Press Start 2P', cursive;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(circle, #16213e 0%, #1a1a2e 100%);
+        }
+
+        /* Lightweight Scanlines for HP 550 / PS4 WebKit */
+        body::after {
+            content: " ";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            z-index: 5;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: var(--primary-color);
+            text-shadow: 4px 4px #000;
+            margin: 0;
+        }
+
+        .subtitle {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            color: #aaa;
+        }
+
+        /* Flexbox for better legacy browser support (XP/Older WebKit) */
+        .game-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
+            width: 95%;
+            max-width: 1000px;
+            z-index: 5;
+            padding: 20px;
+        }
+
+        .game-card {
+            background: var(--secondary-color);
+            border: 4px solid #fff;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            text-decoration: none;
+            color: white;
+            box-shadow: 6px 6px 0px #000;
+            transition: transform 0.15s ease-in-out;
+            outline: none;
+            position: relative;
+        }
+
+        /* Selection highlight - Green is easier to see than Blue */
+        .game-card.focused {
+            transform: scale(1.1);
+            background: var(--primary-color);
+            border-color: var(--highlight-color);
+            box-shadow: 0 0 20px var(--highlight-color);
+        }
+
+        .icon-box {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            font-size: 3rem;
+        }
+
+        /* Custom SVG-like Brick Icon */
+        .brick-icon {
+            width: 60px;
+            height: 60px;
+            position: relative;
+            background: rgba(0,0,0,0.2);
+            border: 2px solid #fff;
+        }
+        .mini-block { position: absolute; width: 14px; height: 14px; border: 1px solid #fff; }
+        .m1 { background: var(--block-cyan); left: 5px; top: 5px; }
+        .m2 { background: var(--block-pink); left: 22px; top: 5px; }
+        .m3 { background: var(--block-green); left: 39px; top: 5px; }
+        .m4 { background: var(--block-orange); left: 5px; top: 22px; }
+
+        .game-title {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .description {
+            font-size: 0.55rem;
+            color: #ddd;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            height: 40px;
+        }
+
+        .play-btn {
+            background: #fff;
+            color: #000;
+            padding: 10px;
+            font-size: 0.75rem;
+            display: block;
+            font-weight: bold;
+        }
+
+        .reset-hint {
+            margin-top: 40px;
+            font-size: 0.65rem;
+            color: #ffda08;
+            border: 2px dashed #ffda08;
+            padding: 15px;
+            max-width: 600px;
+            text-align: center;
+            z-index: 5;
+            line-height: 1.5;
+        }
+
+        /* Pulsing animation for the hint */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .pulse-text { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ARCADE MENU</h1>
+        <p class="subtitle">PRESS START TO PLAY</p>
+    </header>
+
+    <div class="game-grid">
+        <!-- Brick Fall Game -->
+        <a href="brick.html" class="game-card">
+            <div class="icon-box">
+                <div class="brick-icon">
+                    <div class="mini-block m1"></div>
+                    <div class="mini-block m2"></div>
+                    <div class="mini-block m3"></div>
+                    <div class="mini-block m4"></div>
+                </div>
+            </div>
+            <span class="game-title">BRICK FALL</span>
+            <p class="description">Stack blocks carefully. Keep the screen clear!</p>
+            <span class="play-btn">PLAY NOW</span>
+        </a>
+
+        <!-- Neon Snake Game -->
+        <a href="snake.html" class="game-card">
+            <div class="icon-box">🐍</div>
+            <span class="game-title">NEON SNAKE</span>
+            <p class="description">Eat the pixels. Avoid the walls!</p>
+            <span class="play-btn">PLAY NOW</span>
+        </a>
+
+        <!-- Locked Game (Visual Placeholder) -->
+        <a href="#" class="game-card" style="opacity: 0.7;">
+            <div class="icon-box" style="filter: grayscale(1);">🌀</div>
+            <span class="game-title">PUYO POP</span>
+            <p class="description">Coming soon to the arcade zone.</p>
+            <span class="play-btn">LOCKED</span>
+        </a>
+    </div>
+
+    <div class="reset-hint">
+        <span class="pulse-text">TIP: IF THE GAME GETS TOO MESSY,</span><br>
+        PRESS THE RESET BUTTON ON YOUR SCREEN!
+    </div>
+
+    <script>
+        let selectedIndex = 0;
+        const cards = document.querySelectorAll('.game-card');
+        let lastInputTime = 0;
+        const inputDelay = 220; // Prevents "skipping" cards on PS4
+
+        function updateFocus() {
+            cards.forEach((card, i) => {
+                if (i === selectedIndex) {
+                    card.classList.add('focused');
+                    // Ensure the element is focused for the browser
+                    card.focus();
+                } else {
+                    card.classList.remove('focused');
+                }
+            });
+        }
+
+        function pollGamepad() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            // Most PS4 setups will have the controller at index 0
+            const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3]; 
+
+            if (gp) {
+                const now = Date.now();
+                if (now - lastInputTime > inputDelay) {
+                    // Check D-Pad (Left=14, Right=15) 
+                    // and Left Analog Stick (Axis 0) with a deadzone of 0.5
+                    const navLeft = gp.buttons[14].pressed || gp.axes[0] < -0.5;
+                    const navRight = gp.buttons[15].pressed || gp.axes[0] > 0.5;
+                    
+                    if (navLeft) {
+                        selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : cards.length - 1;
+                        lastInputTime = now;
+                        updateFocus();
+                    } else if (navRight) {
+                        selectedIndex = (selectedIndex < cards.length - 1) ? selectedIndex + 1 : 0;
+                        lastInputTime = now;
+                        updateFocus();
+                    }
+
+                    // PS4 'Cross' Button is index 0
+                    if (gp.buttons[0].pressed) {
+                        // Trigger the link or action
+                        cards[selectedIndex].click();
+                        lastInputTime = now;
+                    }
+                }
+            }
+            requestAnimationFrame(pollGamepad);
+        }
+
+        // Initialize focus and start controller polling
+        updateFocus();
+        requestAnimationFrame(pollGamepad);
+
+        // Keyboard support for the HP 550 Windows XP setup
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : cards.length - 1;
+                updateFocus();
+            } else if (e.key === 'ArrowRight') {
+                selectedIndex = (selectedIndex < cards.length - 1) ? selectedIndex + 1 : 0;
+                updateFocus();
+            } else if (e.key === 'Enter') {
+                cards[selectedIndex].click();
+            }
+        });
+
+        // Prevention: PS4 browser often tries to use its own spatial navigation.
+        // This stops the "blue box" from appearing.
+        window.addEventListener('mousedown', (e) => e.preventDefault());
+    </script>
+</body>
+</html>
